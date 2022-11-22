@@ -1,0 +1,280 @@
+---
+title: "sta308_Midterm-2.RM"
+author: "Ryan McCollum"
+date: "2022-11-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Scenario
+
+*Your wildest dreams have been fulfilled and you are the head coach for the Michigan State Spartans!.  You are in the winner-take-all championship game and are trailing by a single point with 2 seconds to play!  You just called time out and have possession of the ball on the offensive side of the court. You have the opportunity for one more shot.  What will you do?  Go for a three point field goal or a two point field goal?*
+
+# Stated Problem
+
+*As coach, you get to decide: does your team go for a two point field goal or a three point field goal? Your code must consider both scenarios.*
+
+## Going for two
+*When you go for a two point field goal, there is a 60% chance your team completes the inbound pass (so 40% chance it is stolen and you lose the game). The player who receives the ball has a 55% chance of making the shot (you are awarded 2 points, and win the game). There is a 10% chance that player is fouled on the play.  If fouled, they are awarded two foul shots and have a 60.5% chance of making each shot (each worth one point, so you may miss both, make one and tie or make 2 and win the game)).  So by using this strategy it is possible your teams scores 0, 1 or 2 points, but the outcome is randomly determined by probabilities.*
+
+## Going for three
+*When you go for a three point field goal, there is an 80% chance your team completes the inbound pass. The player who receives the ball has a 39.95% chance of making the three point shot (you are awarded 3 points, and win the game). There is only a 5% chance they are fouled on the play. However if fouled, they are awarded three foul shots and because this person is a good shooter, they have an 90% chance of making each of the foul shots (so they may make 0, 1, 2 or all 3 shots).  The possible point outcomes from this strategy are 0, 1, 2, or 3 points but again random. You will win the game if your team scores 2 or 3 points. *
+
+**Which scenario is the better decision?**
+
+
+
+## 2 Point Field Goal Function
+```{r}
+twoPointer <- function(simulations = 100000, seed = 11152022){
+  set.seed(seed)
+  
+  i = 0
+  points_2 <- c()
+  
+  # Simulation
+  while(i < simulations) {
+    
+    i <- i + 1 
+    
+    # Probability that the inbound pass is complete
+    inBoundPass <- sample(c("Complete", "Stolen"),
+              size=1, prob=c(.60, .40))
+  
+
+    # Computing probability of the shot being made
+    if(inBoundPass=="Complete") {
+      shot <- sample(c("Made", "Miss", "Foul"),
+                   size=1, prob=c(.55, .35, .10))
+    
+    
+      # Outcome if the player makes the shot
+      if(shot=="Made") {
+        points_2 <- c(points_2, 2)
+       
+      # Outcome if the player is fouled 
+      } else if(shot=="Foul"){
+        freeThrow <- sum(sample(c(1, 0),
+                          size=2, prob=c(.605, .395), replace = TRUE))
+        points_2 <- c(points_2, freeThrow)
+        
+      # Outcome if the player misses the shot 
+      } else {
+      points_2 <- c(points_2, 0)
+      }
+    } else {
+      points_2 <- c(points_2, 0)
+    }
+  }
+  return (points_2)
+}
+```
+
+## 2 Point Field Goal Analysis
+
+### Mean and Summary
+```{r}
+twoPointResults <- twoPointer()
+summary(twoPointResults)
+mean(twoPointResults)
+```
+
+*We can see from our mean points scored on our 2 point attempt being 0.734 which is less than 1, that the play results in a loss a majority of the time. We are also able to tell this from our median, which is 0, which means that over half of the time the play results in 0 points. However, based on our upper quartile of 2.0, we know that we win the game at least 25% of the time. *
+
+
+### Standard Deviation
+```{r}
+sd(twoPointResults)
+```
+
+*Our standard deviation is low, which makes sense considering we can only score 0, 1 or 2 points. There is not much to interpret here but it will be useful when compared to the standard deviation of the 3 point shot attempt.*
+
+
+### Frequency Table of Points Scored
+```{r}
+table(twoPointResults)
+```
+
+*My earlier hypothesis that more than half of the time we would lose based off our mean points scored is confirmed in this frequency table, which shows that the play scored 0 points in 61,852 times out of the 100,000 simulations.*
+
+
+#### Percentage of wins, losses and ties
+```{r}
+outcomes_Regulation_2pointAttempt <- factor(twoPointResults, levels = c(2, 0, 1),  labels = c("Win", "Loss", "Tie"))
+table(outcomes_Regulation_2pointAttempt) / length(twoPointResults) * 100
+```
+
+*Without overtime, we see that the team will win 35.252% of the time, which is more than 1 in 3 tries.*
+
+
+
+
+## Overtime results for 2 Point Attempt
+```{r}
+twoPointerOvertime <- function(seed = 11152022) {
+  outcomes_OT_2pointAttempt <- c()
+  
+  set.seed(seed)
+  ## Loop over all values of the twoPointResults vector and sample a 50/50 overtime result if value of twoPointResults = 1
+  for (i in 1:length(twoPointResults)) {
+    points <- twoPointResults[i]
+    if (points == 2) {
+      outcomes_OT_2pointAttempt  <- c(outcomes_OT_2pointAttempt, "Win")
+    } else if (points == 1) {
+      outcomes_OT_2pointAttempt  <- c(outcomes_OT_2pointAttempt, sample(c("Win", "Loss"), size=1))
+    } else if (points == 0) {
+      outcomes_OT_2pointAttempt  <- c(outcomes_OT_2pointAttempt, "Loss")
+    }
+  }
+  return(outcomes_OT_2pointAttempt)
+}
+```
+
+
+
+### Winning and Losing percentages when accounting for overtime
+```{r}
+overtimeOutcomes2Pointer <- twoPointerOvertime()
+table(overtimeOutcomes2Pointer) / length(twoPointResults) *100
+```
+
+*After factoring in overtime, our win percentage increases almost 1.5%. This makes sense since the chance of winning in overtime is 50% and based on our previous table the play resulted in a tie just under 3% of the time. However, we still lose 63.333% of the time.*
+
+
+
+
+## 3 Point Field Goal Function
+```{r}
+threePointer <- function(simulations = 100000, seed = 11152022){
+
+  i = 0
+  points_3 <- c()
+  
+  # Simulation
+  set.seed(seed)
+  while(i < simulations) {
+    
+    i <- i + 1 
+    
+    # Probability that the inbound pass is complete
+    inBoundPass <- sample(c("Complete", "Stolen"),
+                          size=1, prob=c(.80, .20))
+    
+    # Computing probability of the shot being made, missed or a foul being called
+    if(inBoundPass=="Complete") {
+      shot <- sample(c("Made", "Miss", "Foul"),
+                     size=1, prob=c(.3995, .5505, .05))
+      
+      
+      # Outcome if the player makes the shot
+      if(shot=="Made") {
+        points_3 <- c(points_3, 3)
+        
+        # Outcome if the player is fouled 
+      } else if(shot=="Foul"){
+        freeThrow <-
+          sum(sample(c(1, 0),
+                     size=3, prob=c(.90, .10), replace = TRUE))
+        points_3 <- c(points_3, freeThrow)
+        
+        # Outcome if the player misses
+      } else {
+        points_3 <- c(points_3, 0)
+      }
+    } else {
+        points_3 <- c(points_3, 0)
+    }
+  }
+  return (points_3)
+}
+```
+
+## 3 Point Field Goal Analysis
+
+### Mean and Summary
+```{r}
+threePointResults <- threePointer()
+summary(threePointResults)
+mean(threePointResults)
+```
+
+*As we can see, the mean for the 3 point attempt slightly is above 1 point, sitting at 1.06486, which seems to suggest that most of the time the play would win or tie. However, since most wins result in 3 points being scored, we would need the mean to be over or near 1.5 points per attempt to suggest that most of the time the play results in a win. It is also noteworthy that the mean for the 3 point attempt is about 0.33 points per attempt higher than the 2 point attempt mean.  (recall that mean was 0.734). *
+
+
+### Standard Deviation
+```{r}
+sd(threePointResults)
+```
+
+*The standard deviation for the 3 point attempt (1.42787) is slightly larger than that of the 2 point attempt (0.9488377). This makes sense since a majority of the values are 0's and 3's instead of 0' and 2's.*
+
+
+### Frequency Table of Points Scored
+```{r}
+table(threePointResults)
+```
+
+*As we can see from the table, the frequency of 0's (64,108) is close but slightly higher than the frequency of 0's in the 2 point attempt (61,852). We can also notice that the frequency of ties, or results that score 1 point exactly, (97) is almost 30 times less than that of the 2 point attempt (2,896). One last thing to note is although the 2 and 3 points scored are differing amounts, they both result in a win for the team.*
+
+
+#### Percentage of wins, losses and ties
+```{r}
+outcomes_Regulation_3pointAttempt <- factor(threePointResults, levels = c(3, 2, 0, 1),  labels = c("Win", "Win", "Loss", "Tie"))
+table(outcomes_Regulation_3pointAttempt) / length(threePointResults)*100
+```
+
+
+*In regulation the percentage of wins is about 0.5% more than the percentage of regulation wins in the 2 point attempt.*
+
+
+
+## Overtime Results for 3 Point Attempt
+```{r}
+
+threePointerOvertime <- function(seed = 11152022) {
+  outcomes_OT_3pointAttempt <- c()
+
+  set.seed(seed)
+  ## Loop over all values of the threePointResults vector and sample a 50/50 overtime result if value of threePointResults = 1
+  for (i in 1:length(threePointResults)) {
+    points <- threePointResults[i]
+    if (points >= 2) {
+      outcomes_OT_3pointAttempt  <- c(outcomes_OT_3pointAttempt, "Win")
+    } else if (points == 1) {
+      outcomes_OT_3pointAttempt  <- c(outcomes_OT_3pointAttempt, sample(c("Win", "Loss"), size=1))
+    } else if (points == 0) {
+      outcomes_OT_3pointAttempt  <- c(outcomes_OT_3pointAttempt, "Loss")
+    }
+  }
+  return(outcomes_OT_3pointAttempt)
+}
+```
+
+
+
+### Winning and Losing percentages when accounting for overtime
+```{r}
+overtimeOutcomes3Pointer <- threePointerOvertime()
+table(overtimeOutcomes3Pointer) / length(threePointResults) *100
+```
+
+*Once again we notice that the winning percentage increases a proportional amount to the number of ties in regulation. The win percentage increases approximately 0.5%, which makes sense since there is a 50% chance of winning in overtime and the percentage of ties, or games sent to overtime was about 1%*
+
+
+
+## Final Analysis
+
+**There are a lot of factors to take in when choosing a decision.**
+
+**When looking at the mean points scored of each, 0.734 for the 2 point attempt and 1.06486 for the 3 point attempt, it seems like the 3 point attempt is the better option because it results in, on average, more points scored per play. However, we also need to remember that this mean is inflated. In this scenario, scoring 2 and 3 points gives your team the same result, a win. So it doesn't really matter that the average points per play on the 3 point attempt is higher if the win percentages are close to equal, it is inflated because most the wins result in 3 points, instead of 2. Now, if the 3 point attempt average points scored was above 1.5, or significantly higher than the 2 point attempt, then we could use it as a way to compare and say the 3 point attempt is the better option. However, I do not think that the average number of points matters too much in this scenario, since the 3 point attempt average of 1.06486 gives a false sense that on average the team will tie or win the game.**
+
+**Looking at the win percentages, it seems like the 3 point shot would be the better choice, because in 100,000 trials it worked 54 deviation proves the point that the 3 point attempt mean is inflated. We see that the 3 point attempt standard deviation is 1.42787, which is about 0.5 higher than 0.9488377, the standard deviation of the 2 point attempt. For the same reasons mentioned earlier, it makes sense that the 2 point attempt standard deviation is lower, or that is is the more "consistent" attempt, which again, is not a very good measure of analysis. However it is still interesting to note that on average the 3 point attempt scores more points, but that it also has more variety in the number of points scored**
+
+**Considering regulation win-loss-tie ratios and percentages, the plays are both almost identical. However, the 3 point shot is slightly favored after 100,000 simulations, as it results in a win rate of 35.795% compared to the 2 point attempts 35.252% win rate. This is a very interesting find, seeing as the 3 point shooter makes the shot, on average, less than 2 times out of 5, and the 2 point shooter has a much better chance of making the shot. However, if we look at the losing in regulation percentages we notice that the 3 point shot has a losing percentage of 64.108%, and the 2 point shot attempt has a losing percentage of only 61.852%. In terms of overtime, the 2 point shot sends the team to overtime 2.896%, or 2,896 times out of 100,000, compared to the 3 point attempt, which results in overtime only 0.097% of the time.**
+
+**Based on these results, there are 2 different coaching strategies. Go for the better chance of winning in regulation with the 3 point shot, or go with the smaller chance of losing in regulation with the 2 point attempt. Personally although I like the 3 point shot because you have an 80% chance of making the inbound pass, compared to the 2 point attempt where your team wont even get a shot off 2 out of 5 times, I think the 2 point shot is the way to go. Although it results in a direct win less often, it gives your team the best chance at not losing the game.**
+
+**After computing for overtime probabilities, both of the winning and losing probabilities increase (obviously). We see that the 3 point attempt isn't altered very much, as it now has a winning percentage of 35.847% and a losing percentage of 64.153%. The 2 point shot has a winning losing percentage of 36.667% and 63.333% respectively. The two point attempt on average gives you almost a 1% better chance of winning the ball game than the 3 point shot does. Realistically, I think that based on the simulation the 2 point shot is arguably better in regulation, and definitely better after overtime. There could be different results if I increased the simulations, but I am fairly confident that after running 100,000 simulations that the 2 point shot attempt is the better play in both regulation and when accounting for overtime. **
+
